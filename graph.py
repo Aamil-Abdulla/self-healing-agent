@@ -1,6 +1,10 @@
 from langgraph.graph import StateGraph , END
 from typing import TypedDict
 import os
+from langchain_groq import chat_qroq
+from groq import Groq
+from  e2b_code_interpreter import Sandbox 
+client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 class AgentState(TypedDict):
     original_code : str
@@ -10,15 +14,74 @@ class AgentState(TypedDict):
     attempts_count : int
     success : bool
     explanation : str
+    analysis : str
 
 def analyzer_node(state: AgentState):
-    print("Analyzing the code")
-    return {"current_code": state["original_code"]}
+    completion = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[
+            {
+                "role": "system",
+                "content": f"You are a code analyzer assistance that assists the code from the task description which user has given  : {state['task_description']} and the original code which the user has sent : {state['original_code']} .You need to first learn the task description then analyze the code and find the issue in it and give a detailed explanation about it"
+            },
+            {
+                "role": "user",
+                "content": f"Task Description : {state['task_description']} and the original code : {state['original_code']} ."
+            }
+        ]
+    )
+
+    
+    
+    return {"analysis": completion.choices[0].message.content}
+
+
+
+
+
+
 def fix_node(state: AgentState):
+    
+    completion = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[
+            {
+                "role": "system",
+                "content": f"You are a pro code fixer assistance that fixes that broken code using the task description which user has given . Return ONLY the raw code. Do not include markdown code blocks, backticks, or any conversational text."
+                },
+            {
+                "role": "user",
+                "content": f"Task Description : {state['task_description']} and the original code : {state['original_code']} and the analysis : {state['analysis']} ."
+            }
+        ]
+    )
     print("Fixing the code")
-    pass
+    
+    return {
+        "current_code": completion.choices[0].message.content,
+        "attempts_count": state["attempts_count"] + 1
+        }
+
 def execute_node(state: AgentState):
     print("Executing the code")
+    with Sandbox() as sandbox:
+        execution = sandbox.run_code(state["current_code"])
+        if execution.error:
+            return{
+                "success": False,
+                "explanation": f"Error: {execution.error}",
+                "attempts": state["attempts_count"] + [{"code": state["current_code"], "error": execution.error}]
+            }
+            
+        else:
+            return{
+                "success": True,
+                "explanation": f"Output: {execution.logs.stdout}",
+                "attempts": state["attempts_count"] + [{"code": state["current_code"], "output": execution.logs.stdout}]
+            }
+
+
+    
     return {"current_code": state["current_code"]}  
 
 def explain_node(state: AgentState):
