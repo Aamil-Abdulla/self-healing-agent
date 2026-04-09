@@ -1,6 +1,8 @@
 from langgraph.graph import StateGraph , END
 from typing import TypedDict
 import os
+from dotenv import load_dotenv
+load_dotenv()
 from groq import Groq
 from  e2b_code_interpreter import Sandbox 
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
@@ -63,7 +65,7 @@ def fix_node(state: AgentState):
 
 def execute_node(state: AgentState):
     print("Executing the code")
-    with Sandbox() as sandbox:
+    with Sandbox.create() as sandbox:
         execution = sandbox.run_code(state["current_code"])
         if execution.error:
             return{
@@ -116,4 +118,4 @@ graph.add_edge("fix", "execute")
 graph.add_conditional_edges("execute", route_after_execute)
 graph.add_edge("explain", END)
 
-app = graph.compile()
+app = graph.compile()   
