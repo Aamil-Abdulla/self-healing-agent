@@ -1,3 +1,5 @@
+import code
+
 from langgraph.graph import StateGraph , END
 from typing import TypedDict
 import os
@@ -48,7 +50,7 @@ def fix_node(state: AgentState):
         messages=[
             {
                 "role": "system",
-                "content": f"You are a pro code fixer assistance that fixes that broken code using the task description which user has given . Return ONLY the raw code. Do not include markdown code blocks, backticks, or any conversational text."
+                "content": f"You are a pro code fixer assistance that fixes that broken code using the task description which user has given .Return ONLY raw Python code. No backticks, no ```python, no markdown, no explanations. Just the code itself starting from the first import or def statement."
                 },
             {
                 "role": "user",
@@ -61,26 +63,30 @@ def fix_node(state: AgentState):
     return {
         "current_code": completion.choices[0].message.content,
         "attempts_count": state["attempts_count"] + 1
-        }
+    }
 
 def execute_node(state: AgentState):
     print("Executing the code")
+    code = state["current_code"]
+    if code.startswith("```"):
+        code = code.split("\n", 1)[1]
+    if code.endswith("```"):
+        code = code.rsplit("\n", 1)[0]
+    
     with Sandbox.create() as sandbox:
-        execution = sandbox.run_code(state["current_code"])
+        execution = sandbox.run_code(code)
         if execution.error:
-            return{
+            return {
                 "success": False,
                 "explanation": f"Error: {execution.error}",
-                "attempts": state["attempts"] + [{"code": state["current_code"], "error": execution.error}]
+                "attempts": state["attempts"] + [{"code": code, "error": str(execution.error)}]
             }
-            
         else:
-            return{
+            return {
                 "success": True,
                 "explanation": f"Output: {execution.logs.stdout}",
-                "attempts": state["attempts"] + [{"code": state["current_code"], "output": execution.logs.stdout}]
-            }  
-
+                "attempts": state["attempts"] + [{"code": code, "output": execution.logs.stdout}]
+            }
 def explain_node(state: AgentState):
     print("Explaining the results")
     completion = client.chat.completions.create(
