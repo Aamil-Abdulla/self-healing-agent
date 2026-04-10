@@ -25,7 +25,7 @@ class AgentState(TypedDict):
 def analyzer_node(state: AgentState):
     completion = client.chat.completions.create(
         model="llama-3.3-70b-versatile",
-        max_tokens=500
+        max_tokens=500,
         messages=[
             {
                 "role": "system",
