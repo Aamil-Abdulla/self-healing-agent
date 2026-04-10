@@ -11,7 +11,7 @@ class HealRequest(BaseModel):
 
 @app.get("/")
 async def home():
-    with open("index.html", "r") as f:
+    with open("index.html", "r", encoding="utf-8") as f:
         html_content = f.read()
     return HTMLResponse(content=html_content)
 
