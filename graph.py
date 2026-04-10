@@ -1,10 +1,13 @@
 import code
-
+import langsmith
 from langgraph.graph import StateGraph , END
 from typing import TypedDict
 import os
 from dotenv import load_dotenv
 load_dotenv()
+os.environ["LANGCHAIN_TRACING_V2"] = os.getenv("LANGCHAIN_TRACING_V2", "true")
+os.environ["LANGCHAIN_API_KEY"] = os.getenv("LANGCHAIN_API_KEY", "")
+os.environ["LANGCHAIN_PROJECT"] = os.getenv("LANGCHAIN_PROJECT", "self-healing-agent")
 from groq import Groq
 from  e2b_code_interpreter import Sandbox 
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
@@ -22,6 +25,7 @@ class AgentState(TypedDict):
 def analyzer_node(state: AgentState):
     completion = client.chat.completions.create(
         model="llama-3.3-70b-versatile",
+        max_tokens=500
         messages=[
             {
                 "role": "system",
@@ -94,7 +98,7 @@ def explain_node(state: AgentState):
         messages=[
             {
                 "role": "system",
-                "content": f"You are a pro code explainer assistance that explains the execution results of the code using the task description which user has given . Return ONLY the explanation. Do not include markdown code blocks, backticks, or any conversational text."
+                "content": f"You are a pro code explainer assistance that explains the execution results of the code using the task description which user has given . Return ONLY the explanation. Do not include markdown code blocks, backticks, or any conversational text. Explain the fixes made to the code in 3-5 sentences maximum. Be concise and specific. Do not repeat yourself."
                 },
                 {
                 "role": "user",

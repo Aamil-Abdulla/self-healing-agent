@@ -7,3 +7,4 @@ groq==0.37.1
 e2b-code-interpreter==2.6.0
 python-dotenv==1.2.2
 python-multipart==0.0.22
+langsmith==0.7.23
